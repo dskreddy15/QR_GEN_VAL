@@ -9,8 +9,8 @@ const HomePage = () => {
         <Link to="/qr-generator">
           <button style={{ margin: '10px', padding: '10px 20px' }}>QR Generator</button>
         </Link>
-        <Link to="/qr-scanner">
-          <button style={{ margin: '10px', padding: '10px 20px' }}>QR Scanner</button>
+        <Link to="/admin">
+          <button style={{ margin: '10px', padding: '10px 20px' }}> Admin Portal</button>
         </Link>
       </div>
     </div>

@@ -1,0 +1,79 @@
+const express = require('express');
+const { Low, JSONFile } = require('lowdb');
+const cors = require('cors');
+const app = express();
+const port = 5000;
+
+// Middleware
+app.use(express.json());
+app.use(cors());
+
+// Database setup
+const adapter = new JSONFile('db.json');
+const db = new Low(adapter);
+
+// Initialize DB
+async function initDB() {
+    await db.read();
+    db.data = db.data || { coupons: [] };
+    await db.write();
+}
+initDB();
+
+// Generate QR Code Coupon
+app.post('/generate', async (req, res) => {
+    const { couponCode, startedFrom, expiryDate } = req.body;
+    
+    if (!couponCode || !startedFrom || !expiryDate) {
+        return res.status(400).json({ message: 'couponCode, startedFrom, and expiryDate are required' });
+    }
+    
+    const newCoupon = {
+        couponCode,
+        validated: false,
+        used: false,
+        createdAt: new Date().toISOString(),
+        startedFrom,
+        expiryDate
+    };
+    
+    db.data.coupons.push(newCoupon);
+    await db.write();
+    
+    res.json(newCoupon);
+});
+
+// Get All Coupons (Admin View)
+app.get('/coupons', async (req, res) => {
+    await db.read();
+    res.json(db.data.coupons);
+});
+
+// Validate QR Code
+app.get('/validate/:code', async (req, res) => {
+    await db.read();
+    const coupon = db.data.coupons.find(c => c.couponCode === req.params.code);
+    
+    if (!coupon) return res.status(404).json({ message: 'Invalid QR code' });
+    
+    res.json({ code: coupon.couponCode, status: coupon.used ? 'Used' : (new Date() > new Date(coupon.expiryDate) ? 'Expired' : 'Valid') });
+});
+
+// Redeem QR Code
+app.post('/redeem/:code', async (req, res) => {
+    await db.read();
+    const coupon = db.data.coupons.find(c => c.couponCode === req.params.code);
+    
+    if (!coupon) return res.status(404).json({ message: 'Invalid QR code' });
+    if (coupon.used) return res.status(400).json({ message: 'QR code already used' });
+    if (new Date() > new Date(coupon.expiryDate)) return res.status(400).json({ message: 'QR code expired' });
+    
+    coupon.used = true;
+    await db.write();
+    
+    res.json({ message: 'QR code redeemed successfully', code: coupon.couponCode });
+});
+
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+});

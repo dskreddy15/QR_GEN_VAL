@@ -1,86 +1,92 @@
-// server.js
-const express = require('express');
-const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const QRCode = require('qrcode');
-
+import express from 'express';
 const app = express();
-
-// Middleware
+app.use(express.json());
+import cors from 'cors';
 app.use(cors());
-app.use(bodyParser.json());
 
-// MongoDB Connection
-mongoose.connect('mongodb+srv://dhatrigeethu:ZIlepmnpgna2qOVG@cluster0.h0wkn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB Connected'))
-  .catch(err => console.log(err));
+import {Low} from 'lowdb';
+import { JSONFile, JSONFilePreset } from 'lowdb/node';
 
-// Coupon Schema
-const couponSchema = new mongoose.Schema({
-  couponCode: { type: String, required: true, unique: true },
-  qrGenerated: { type: Boolean, default: false },
-  redeemed: { type: Boolean, default: false },
-});
-
-const Coupon = mongoose.model('Coupon', couponSchema);
-
+const db = await JSONFilePreset('db.json', {  coupons: [] 
+                            }); 
 // Generate QR Endpoint
 app.post('/api/generate-qr', async (req, res) => {
-  const { couponCode } = req.body;
+  const { couponCode, addDiscount, validFrom, validTo } = req.body;
 
   try {
-    let coupon = await Coupon.findOne({ couponCode });
+    await db.read();
+    const coupons = db.data.coupons;
 
-    if (coupon) {
-      if (coupon.qrGenerated) {
-        return res.status(200).json({ message: 'QR already exists' });
-      }
-    } else {
-      coupon = new Coupon({ couponCode });
+    const couponExists = coupons.some(coupon => coupon.couponCode === couponCode);
+    if (couponExists) {
+      return res.status(200).json({ message: 'QR already exists' });
     }
+      else {
+        const newCoupon = {
+          couponCode,
+          isValid: false,
+          redeemed: false,
+          createdAt: new Date().toISOString(),
+          addDiscount,
+          validFrom,
+          validTo,
+    };
 
-    // Generate QR Code
-    const qrImage = await QRCode.toDataURL(couponCode);
-
-    coupon.qrGenerated = true;
-    await coupon.save();
-
-    res.status(200).json({ message: 'QR generated', qrImage });
-  } catch (error) {
-    res.status(500).json({ message: 'Error generating QR', error });
+    db.data.coupons.push(newCoupon);
+    await db.write();
+    res.status(201).json(newCoupon);
+    }} catch (error) {
+  res.status(500).json({ message: 'Error generating QR', error });
   }
 });
 
 
-// Scan QR Endpoint
-// Validate QR Endpoint
-app.post('/api/validate-qr', async (req, res) => {
-    const { qrData } = req.body;
-  
-    try {
-      // Check if the QR code exists in the database
-      const coupon = await Coupon.findOne({ couponCode: qrData });
-  
-      if (!coupon) {
-        return res.status(404).json({ message: 'QR not matched' });
-      }
-  
-      if (coupon.redeemed) {
-        return res.status(200).json({ message: 'QR already used' });
-      }
-  
-      // Mark as redeemed
-      coupon.redeemed = true;
-      await coupon.save();
-  
-      res.status(200).json({ message: 'QR is valid. Offer redeemed.' });
-    } catch (error) {
-      res.status(500).json({ message: 'Error validating QR code', error });
+app.post(`/api/validate-qr`, async (req, res) => {
+    await db.read();
+    const { couponCode } = req.body;
+
+    if (!couponCode) {
+      return res.status(400).json({ message: 'Coupon code is required' });
     }
+
+    const coupon = db.data.coupons.find(coupon => coupon.couponCode === couponCode);
+
+    const validTo = new Date(coupon.validTo);
+    const now = new Date();
+
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+    res.json({ message: coupon.isValid ? 'Coupon is valid' : 'Coupon is not valid',
+       status: coupon.redeemed ? 'Used' : (now >= validTo ? 'Expired' : "Valid")
+     });
+    
+    db.write(coupon.isValid = true);
+
   });
-  
-  
-// Start Server
-const PORT = 4001;
+
+
+app.post('/api/redeem-qr', async (req, res) => {
+  await db.read();
+  const { couponCode } = req.body;
+  if (!couponCode) {
+    return res.status(400).json({ message: 'Coupon code is required' });
+  }
+  const coupon = db.data.coupons.find(coupon => coupon.couponCode === couponCode);
+  //console.log(Date(coupon.validFrom));
+  //console.log(new Date());
+  const validFrom = new Date(coupon.validFrom);
+  const now = new Date();
+  if ( validFrom > now) {
+    return res.json({ message: "Coupon is Redeemable from " + coupon.validFrom, addDiscount: coupon.addDiscount });
+  }
+  else{
+  res.json({ message: coupon ? (coupon.redeemed ? 'Coupon already redeemed' : 'Coupon redeemed successfully') : 'Coupon not found'
+     , addDiscount: coupon ? coupon.addDiscount : 0});
+   db.write(coupon.redeemed = true);
+  }
+   });
+
+   // Start Server
+const PORT = 4000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

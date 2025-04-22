@@ -1,0 +1,76 @@
+{
+  "coupons": [
+    {
+      "couponCode": "qwerty1",
+      "isValid": true,
+      "redeemed": true,
+      "createdAt": "2025-04-06T03:34:34.620Z",
+      "addDiscount": "1",
+      "validFrom": "2025-04-05",
+      "validTo": "2025-04-06"
+    },
+    {
+      "couponCode": "TESTA",
+      "isValid": true,
+      "redeemed": false,
+      "createdAt": "2025-04-08T03:32:39.052Z",
+      "addDiscount": "2",
+      "validFrom": "2025-04-07",
+      "validTo": "2025-04-08"
+    },
+    {
+      "couponCode": "TEST1",
+      "isValid": false,
+      "redeemed": false,
+      "createdAt": "2025-04-08T03:38:12.711Z",
+      "addDiscount": "5",
+      "validFrom": "2025-04-07",
+      "validTo": "2025-04-08"
+    },
+    {
+      "couponCode": "ertyqw",
+      "isValid": true,
+      "redeemed": true,
+      "createdAt": "2025-04-08T06:48:35.272Z",
+      "addDiscount": "5",
+      "validFrom": "2025-04-07",
+      "validTo": "2025-04-08"
+    },
+    {
+      "couponCode": "dart1",
+      "isValid": true,
+      "redeemed": true,
+      "createdAt": "2025-04-08T17:08:32.392Z",
+      "addDiscount": "20",
+      "validFrom": "2025-04-08",
+      "validTo": "2025-04-09"
+    },
+    {
+      "couponCode": "ertqw1",
+      "isValid": true,
+      "redeemed": true,
+      "createdAt": "2025-04-08T17:13:35.056Z",
+      "addDiscount": "5",
+      "validFrom": "2025-04-08",
+      "validTo": "2025-04-08"
+    },
+    {
+      "couponCode": "$5 0ff $20",
+      "isValid": true,
+      "redeemed": false,
+      "createdAt": "2025-04-08T19:41:22.496Z",
+      "addDiscount": "5",
+      "validFrom": "2025-04-09",
+      "validTo": "2025-06-30"
+    },
+    {
+      "couponCode": "12345",
+      "isValid": true,
+      "redeemed": false,
+      "createdAt": "2025-04-08T23:40:42.068Z",
+      "addDiscount": "5",
+      "validFrom": "2025-04-01",
+      "validTo": "2025-04-06"
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+import React, { useState, useEffect } from "react";
+import QRCodeStyling from "qr-code-styling";
+import axios from "axios";
+
+const QRGenerator = () => {
+  const [couponCode, setCouponCode] = useState("");
+  const [startedFrom, setStartedFrom] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [qrCode, setQrCode] = useState(null);
+  
+  const generateQR = async () => {
+    if (!couponCode || !startedFrom || !expiryDate) {
+      alert("Please enter all fields");
+      return;
+    }
+    try {
+      const response = await axios.post("http://localhost:5000/generate", {
+        couponCode,
+        startedFrom,
+        expiryDate
+      });
+      
+      const qr = new QRCodeStyling({
+        width: 300,
+        height: 300,
+        data: response.data.couponCode,
+        image: "menchies_logo.png",
+        dotsOptions: { color: "#d2232a", type: "rounded" },
+        backgroundOptions: { color: "#ffffff" },
+        imageOptions: { crossOrigin: "anonymous", margin: 10 }
+      });
+      setQrCode(qr);
+    } catch (error) {
+      console.error("Error generating QR Code", error);
+    }
+  };
+  
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">Generate QR Coupon</h2>
+      <input type="text" placeholder="Coupon Code" className="border p-2" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} />
+      <input type="date" className="border p-2" value={startedFrom} onChange={(e) => setStartedFrom(e.target.value)} />
+      <input type="date" className="border p-2" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
+      <button className="bg-blue-500 text-white px-4 py-2 mt-2" onClick={generateQR}>Generate QR</button>
+      <div className="mt-4">{qrCode && <div ref={(ref) => ref && qrCode.append(ref)} />}</div>
+    </div>
+  );
+};
+
+const CouponsList = () => {
+  const [coupons, setCoupons] = useState([]);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/coupons").then(response => {
+      setCoupons(response.data);
+    });
+  }, []);
+
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">All Coupons</h2>
+      <ul>
+        {coupons.map(coupon => (
+          <li key={coupon.couponCode}>{coupon.couponCode} - {coupon.used ? "Used" : "Valid"}</li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+const ValidateCoupon = () => {
+  const [code, setCode] = useState("");
+  const [status, setStatus] = useState(null);
+
+  const validate = async () => {
+    const response = await axios.get(`http://localhost:5000/validate/${code}`);
+    setStatus(response.data.status);
+  };
+
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">Validate QR Coupon</h2>
+      <input type="text" placeholder="Enter Coupon Code" className="border p-2" value={code} onChange={(e) => setCode(e.target.value)} />
+      <button className="bg-green-500 text-white px-4 py-2 mt-2" onClick={validate}>Validate</button>
+      {status && <p>Status: {status}</p>}
+    </div>
+  );
+};
+
+const RedeemCoupon = () => {
+  const [code, setCode] = useState("");
+  const [message, setMessage] = useState("");
+
+  const redeem = async () => {
+    try {
+      const response = await axios.post(`http://localhost:5000/redeem/${code}`);
+      setMessage(response.data.message);
+    } catch (error) {
+      setMessage(error.response?.data?.message || "Error redeeming");
+    }
+  };
+
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">Redeem QR Coupon</h2>
+      <input type="text" placeholder="Enter Coupon Code" className="border p-2" value={code} onChange={(e) => setCode(e.target.value)} />
+      <button className="bg-red-500 text-white px-4 py-2 mt-2" onClick={redeem}>Redeem</button>
+      {message && <p>{message}</p>}
+    </div>
+  );
+};
+
+export { QRGenerator, CouponsList, ValidateCoupon, RedeemCoupon };

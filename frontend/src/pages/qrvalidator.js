@@ -1,49 +1,93 @@
-import React, { useEffect, useState } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import React, { useState } from 'react';
 import axios from 'axios';
+import { useParams } from 'react-router-dom';
 
-const QRScanner = () => {
-  const [message, setMessage] = useState('');
-  let scannerInstance = null; // Prevent multiple instances
-
-  useEffect(() => {
-    scannerInstance = new Html5QrcodeScanner(
-      "qr-reader",
-      { fps: 10, qrbox: { width: 250, height: 250 } }
-    );
-
-    scannerInstance.render(
-      async (decodedText) => {
-        try {
-          const response = await axios.post('http://localhost:4001/api/validate-qr', { qrData: decodedText });
-          setMessage(response.data.message);
-        } catch (error) {
-          setMessage(error.response?.data?.message || 'Error validating QR code');
-        } finally {
-          scannerInstance.clear(); // Stop scanner after successful scan
-        }
-      },
-      (error) => {
-        console.warn(`QR Code Scan Error: ${error}`);
+const QRValidator = () => {
+  const { id } = useParams();
+  const [code, setCode] = useState(id);
+  const [isValid, setIsValid] = useState(false);
+  const [isRedeemed, setIsRedeemed] = useState(false);
+  const handleValidateQR = async () => {
+    if (!code) {
+      alert('Please enter a coupon code');
+      return;
+    }
+    try{
+      await axios.post(`http://192.168.86.23:4000/api/validate-qr`, { couponCode: code })
+          .then(response => {
+            if (response.data.status === 'Valid') {
+              alert('Coupon is valid');
+              setIsValid(true);
+            } 
+            else if (response.data.status === 'Used') {
+              alert('Coupon is already redeemed');
+              setIsValid(true);
+              setIsRedeemed(true);
+            }
+            else if (response.data.status === 'Expired') {
+              alert('Coupon is expired');
+            }
+            else{
+              alert('Coupon is not valid');
+            }
+          });
+    }
+    catch (error) {
+        alert('Error validating QR code. Please try again later.');
       }
-    );
+    }
+    
+  
 
-    return () => {
-      if (scannerInstance) {
-        scannerInstance.clear().catch((err) => {
-          console.warn("Error clearing scanner:", err);
+  const handleRedeemQR = async () => {
+    try{
+    await axios.post(`http://192.168.86.23:4000/api/redeem-qr`, { couponCode: code, redeemed: isRedeemed })
+        .then(response => {
+          if (response.data.message === 'Coupon redeemed successfully') {
+            const amount = response.data.addDiscount;
+            alert('Coupon redeemed successfully ' + amount); 
+            setIsRedeemed(true);
+          }
+          else if (response.data.message === 'Coupon already redeemed') {
+            const amount = response.data.addDiscount;
+            alert('Coupon is already redeemed' + amount);
+          }
+          else if( response.data.message.includes('Redeemable from')){
+            alert(response.data.message);
+          }
+          else{
+            alert('Error redeeming coupon. Please try again later.');
+          }
         });
       }
-    };
-  }, []);
+      catch(error){
+        alert('Error redeeming QR code. Please try again later.');
+      }
+  }
 
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h1>QR Scanner</h1>
-      <div id="qr-reader" style={{ width: "300px", margin: "auto" }}></div>
-      {message && <p style={{ marginTop: "20px" }}>{message}</p>}
+      
+      <div id="qr-reader" style={{ width: "300px", margin: "auto" }}>
+        <h1>Validate Coupon</h1>
+      </div>
+      <div style={{ margin: "10px" }}>
+        <div>
+          <input type="text" placeholder="Enter Coupon Code" className="border p-2" value={code} onChange={(e) => setCode(e.target.value)} />
+        </div>
+        <div style={{ margin: "2px"}}>
+         <button onClick={handleValidateQR} style={{ padding: "10px 20px" }}>Validate QR</button>
+        </div>
+        <h1>Get Ready to Redeem</h1>
+      </div>
+      
+        <div style={ {margin: "10px"}}>
+          <p>Status: {isValid? 'Valid': 'Not Valid'}</p>
+          {isValid && <p>Coupon is {isRedeemed ? 'Redeemed': 'Available' }
+          <button onClick={handleRedeemQR}>Redeem</button></p>}
+        </div>
     </div>
   );
 };
 
-export default QRScanner;
+export default QRValidator;
