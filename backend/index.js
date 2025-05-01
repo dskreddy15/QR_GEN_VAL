@@ -3,12 +3,22 @@ const app = express();
 app.use(express.json());
 import cors from 'cors';
 app.use(cors());
+app.use(bodyParser.json());
 
-import {Low} from 'lowdb';
-import { JSONFile, JSONFilePreset } from 'lowdb/node';
+// MongoDB Connection
+mongoose.connect('mongodb+srv://dhatrigeethu:ZIlepmnpgna2qOVG@cluster0.h0wkn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB Connected'))
+  .catch(err => console.log(err));
 
-const db = await JSONFilePreset('db.json', {  coupons: [] 
-                            }); 
+// Coupon Schema
+const couponSchema = new mongoose.Schema({
+  couponCode: { type: String, required: true, unique: true },
+  qrGenerated: { type: Boolean, default: false },
+  redeemed: { type: Boolean, default: false },
+});
+
+const Coupon = mongoose.model('Coupon', couponSchema);
+
 // Generate QR Endpoint
 app.post('/api/generate-qr', async (req, res) => {
   const { couponCode, addDiscount, validFrom, validTo } = req.body;
